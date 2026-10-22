@@ -21,8 +21,8 @@ const ICONS = {
 
 function initialForm() {
   return {
-    org: '',
-    visitors: [{ id: 1, name: '', mobile: '' }],
+    org: DEFAULTS.org,
+    visitors: [{ id: 1, name: DEFAULTS.visitorName, mobile: '' }],
     date: todayISO(),
     timeFrom: DEFAULTS.timeFrom,
     timeTo: DEFAULTS.timeTo,
@@ -47,6 +47,9 @@ function validate(f) {
   if (!f.meetingWith.trim()) e.meetingWith = 'Enter employee name';
   return e;
 }
+
+// Prefilled defaults are usually replaced, so select them on tap to make overtyping easy.
+const selectAll = (e) => e.target.select();
 
 function Field({ label, error, children, htmlFor }) {
   return (
@@ -177,7 +180,8 @@ export default function App() {
           <h2>Guest organization</h2>
           <Field label="Organization name" htmlFor="org" error={err('org')}>
             <input id="org" type="text" placeholder="e.g. Saasworx" autoComplete="organization"
-              maxLength={LIMITS.org} value={form.org} onChange={set('org')} onBlur={touch('org')} />
+              maxLength={LIMITS.org} value={form.org} onChange={set('org')} onBlur={touch('org')}
+              onFocus={selectAll} />
           </Field>
         </section>
 
@@ -200,7 +204,8 @@ export default function App() {
               <Field label="Full name" htmlFor={`name-${v.id}`} error={err(`name-${v.id}`)}>
                 <input id={`name-${v.id}`} type="text" placeholder="e.g. Digvijay Malik"
                   autoComplete="off" autoCapitalize="words" maxLength={LIMITS.name}
-                  value={v.name} onChange={setVisitor(v.id, 'name')} onBlur={touch(`name-${v.id}`)} />
+                  value={v.name} onChange={setVisitor(v.id, 'name')} onBlur={touch(`name-${v.id}`)}
+                  onFocus={selectAll} />
               </Field>
               <Field label="Mobile number" htmlFor={`mobile-${v.id}`} error={err(`mobile-${v.id}`)}>
                 <input id={`mobile-${v.id}`} type="tel" inputMode="tel" placeholder="10-digit mobile"

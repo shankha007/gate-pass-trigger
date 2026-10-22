@@ -11,6 +11,8 @@ export const EMAIL = {
 };
 
 export const DEFAULTS = {
+  org: 'Salesforce',
+  visitorName: 'John Doe',
   timeFrom: '10:00',
   timeTo: '17:30',
   purpose: 'Meeting',
