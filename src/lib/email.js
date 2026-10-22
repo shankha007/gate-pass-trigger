@@ -16,84 +16,78 @@ export function toEmailData(form) {
   };
 }
 
-function rows(d) {
+export const GREETING = ['Hi Team,', 'Please provide Gate-pass for below Visitors.'];
+
+// Table layout copied from the Admin team's template. Each row is [left, right, style]:
+// 'label' = bold left cell, 'header' = both cells bold, 'value' = both cells plain, 'blank' = empty spacer.
+export function tableRows(d) {
   return [
-    ["Guest's organization name", d.org],
-    ['Visit / Meeting Time', d.time],
-    ['Meeting Date', d.date],
-    ['Purpose of his/her visit', d.purpose],
-    ['Visitor’s meeting is with (BACL Employee Name & Department)', d.meetingWith],
+    ["Guest's organization name", d.org, 'label'],
+    ['Visitor(s) Name ↓', 'Mobile Number ↓', 'header'],
+    ...d.visitors.map((v) => [v.name, v.mobile, 'value']),
+    ['', '', 'blank'],
+    ['Visit / Meeting Time', d.time, 'label'],
+    ['Meeting Date', d.date, 'label'],
+    ['Purpose of his/her visit', d.purpose, 'label'],
+    ['Visitor’s meeting is with (BACL Employee Name & Department)', d.meetingWith, 'label'],
   ];
 }
 
 export function buildPlainBody(d) {
-  const [org, ...rest] = rows(d);
-  const visitorLines = d.visitors.map(
-    (v, i) => `${d.visitors.length > 1 ? `${i + 1}. ` : ''}${v.name} – ${v.mobile}`,
-  );
-  return [
-    'Hi Team,',
-    '',
-    'Please provide Gate-pass for below Visitors.',
-    '',
-    `${org[0]}: ${org[1]}`,
-    '',
-    'Visitor(s) Name – Mobile Number:',
-    ...visitorLines,
-    '',
-    ...rest.map(([k, v]) => `${k}: ${v}`),
-    '',
-  ].join('\r\n');
+  const lines = tableRows(d)
+    .filter(([, , kind]) => kind !== 'blank')
+    .map(([l, r, kind]) => {
+      if (kind === 'header') return 'Visitor(s) Name – Mobile Number:';
+      return kind === 'value' ? `${l} – ${r}` : `${l}: ${r}`;
+    });
+  return [GREETING[0], '', GREETING[1], '', ...lines, ''].join('\r\n');
 }
 
 const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
-// HTML version (table) for pasting into mail apps that keep rich formatting.
+// Rich HTML body (greeting + bordered table) for pasting into the mail app.
 export function buildHtmlBody(d) {
-  const td = 'style="border:1px solid #999;padding:6px 10px;vertical-align:top"';
-  const th = 'style="border:1px solid #999;padding:6px 10px;background:#f2f2f2;text-align:left;vertical-align:top"';
-  const [org, ...rest] = rows(d);
-  const visitorRows = d.visitors
-    .map((v) => `<tr><td ${td}>${esc(v.name)}</td><td ${td}>${esc(v.mobile)}</td></tr>`)
+  const font = 'font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#000';
+  const cell = `border:1px solid #000;padding:10px 8px;height:20px;vertical-align:middle;${font}`;
+  const td = (text, bold) =>
+    `<td style="${cell}${bold ? ';font-weight:bold' : ''}">${text ? esc(text) : '&nbsp;'}</td>`;
+  const rows = tableRows(d)
+    .map(([l, r, kind]) => `<tr>${td(l, kind === 'label' || kind === 'header')}${td(r, kind === 'header')}</tr>`)
     .join('');
   return (
-    '<p>Hi Team,</p><p>Please provide Gate-pass for below Visitors.</p>' +
-    '<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:14px">' +
-    `<tr><th ${th}>${esc(org[0])}</th><td ${td}>${esc(org[1])}</td></tr>` +
-    `<tr><th ${th}>Visitor(s) Name</th><th ${th}>Mobile Number</th></tr>` +
-    visitorRows +
-    rest.map(([k, v]) => `<tr><th ${th}>${esc(k)}</th><td ${td}>${esc(v)}</td></tr>`).join('') +
-    '</table>'
+    GREETING.map((g) => `<p style="${font}">${esc(g)}</p>`).join('') +
+    `<table style="border-collapse:collapse;${font}" cellpadding="0" cellspacing="0">${rows}</table><p>&nbsp;</p>`
   );
 }
 
-// Addresses come from static config and are left unencoded: some mobile mail apps don't decode %40.
-// Everything user-entered lives only in the encoded body.
-export function buildMailto(d) {
+// When the body is going in via paste, the mailto only carries the headers.
+export function buildMailto(d, { withBody = false } = {}) {
   const params = [
+    // Addresses come from static config and are left unencoded: some mobile mail apps don't decode %40.
     `cc=${EMAIL.cc.join(',')}`,
     `subject=${encodeURIComponent(EMAIL.subject)}`,
-    `body=${encodeURIComponent(buildPlainBody(d))}`,
+    ...(withBody ? [`body=${encodeURIComponent(buildPlainBody(d))}`] : []),
   ].join('&');
   return `mailto:${EMAIL.to.join(',')}?${params}`;
 }
 
-export async function copyRich(d) {
-  const html = buildHtmlBody(d);
-  const text = buildPlainBody(d);
+// Returns 'rich' if the formatted table was copied, 'plain' if only text could be copied.
+// The ClipboardItem is built synchronously so iOS Safari still treats it as part of the tap.
+export async function copyBody(d) {
   if (window.ClipboardItem && navigator.clipboard?.write) {
     try {
       await navigator.clipboard.write([
         new ClipboardItem({
-          'text/html': new Blob([html], { type: 'text/html' }),
-          'text/plain': new Blob([text], { type: 'text/plain' }),
+          'text/html': new Blob([buildHtmlBody(d)], { type: 'text/html' }),
+          'text/plain': new Blob([buildPlainBody(d)], { type: 'text/plain' }),
         }),
       ]);
-      return;
+      return 'rich';
     } catch {
       // fall through to plain text
     }
   }
-  await navigator.clipboard.writeText(text);
+  await navigator.clipboard.writeText(buildPlainBody(d));
+  return 'plain';
 }

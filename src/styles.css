@@ -188,8 +188,8 @@ button { font: inherit; cursor: pointer; }
 .btn.primary { background: var(--primary); color: #fff; }
 .btn.primary:active { background: var(--primary-press); }
 .btn.outline { background: transparent; color: var(--primary); border-color: var(--primary); border-style: dashed; }
-.btn.secondary { background: var(--primary-soft); color: var(--primary); width: 52px; padding: 0; }
 .btn.ghost { background: transparent; color: var(--muted); }
+.btn.secondary-wide { background: var(--primary-soft); color: var(--primary); }
 
 .icon-btn {
   display: inline-grid;
@@ -231,16 +231,37 @@ button { font: inherit; cursor: pointer; }
 
 .preview { margin-top: 12px; font-size: 0.875rem; }
 .preview p { margin: 0 0 4px; word-break: break-word; }
-.preview pre {
-  margin: 10px 0 0;
+/* Mirrors what gets pasted into the email, so it stays black-on-white in both themes. */
+.mail-body {
+  margin-top: 10px;
   padding: 12px;
-  background: var(--input);
+  background: #fff;
+  color: #000;
   border: 1px solid var(--border);
   border-radius: 10px;
-  white-space: pre-wrap;
+  font-family: Calibri, Arial, sans-serif;
+  font-size: 0.8125rem;
+  overflow-x: auto;
+}
+.mail-body p { margin: 0 0 8px; }
+.mail-table { border-collapse: collapse; width: 100%; }
+.mail-table td {
+  border: 1px solid #000;
+  padding: 8px 6px;
+  height: 34px;
+  vertical-align: middle;
   word-break: break-word;
-  font-family: inherit;
-  font-size: 0.875rem;
+}
+.mail-table td:first-child { width: 62%; }
+.row-label td:first-child,
+.row-header td { font-weight: 700; }
+
+.steps {
+  text-align: left;
+  margin: 0 0 20px;
+  padding-left: 22px;
+  display: grid;
+  gap: 8px;
 }
 
 .action-bar {

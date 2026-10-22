@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { DEFAULTS, EMAIL, LIMITS } from './config.js';
-import { buildMailto, buildPlainBody, copyRich, toEmailData } from './lib/email.js';
+import { GREETING, buildMailto, copyBody, tableRows, toEmailData } from './lib/email.js';
 import { formatDate, formatTime, isValidMobile, isValidName, todayISO } from './lib/format.js';
 
 const Icon = ({ d, size = 20 }) => (
@@ -114,17 +114,25 @@ export default function App() {
     return false;
   };
 
-  const handleSend = () => {
+  // Copies the formatted body first (mailto can't carry a table), then opens the mail app.
+  // If the clipboard is unavailable, falls back to a plain-text body inside the mailto.
+  const handleSend = async () => {
     if (!ensureValid()) return;
-    window.location.href = buildMailto(data);
-    setSent(true);
+    let mode;
+    try {
+      mode = await copyBody(data);
+    } catch {
+      mode = 'none';
+    }
+    window.location.href = buildMailto(data, { withBody: mode === 'none' });
+    setSent(mode);
   };
 
-  const handleCopy = async () => {
-    if (!ensureValid()) return;
+  const handleCopyAgain = async () => {
     try {
-      await copyRich(data);
-      showToast('Copied — paste into your email body');
+      const mode = await copyBody(data);
+      setSent(mode);
+      showToast('Copied — now paste it into the email body');
     } catch {
       showToast('Copy failed on this browser');
     }
@@ -146,22 +154,36 @@ export default function App() {
 
   if (sent) {
     return (
-      <main className="app">
-        <section className="card done">
-          <div className="done-icon"><Icon d={ICONS.check} size={32} /></div>
-          <h1>Mail app opened</h1>
-          <p className="muted">
-            Everything is filled in for <strong>{data.org}</strong> ({data.visitors.length}{' '}
-            visitor{data.visitors.length > 1 ? 's' : ''}). Just review and tap <strong>Send</strong>.
-          </p>
-          <button className="btn primary block" onClick={reset}>
-            <Icon d={ICONS.plus} /> New gate pass request
-          </button>
-          <button className="btn ghost block" onClick={() => setSent(false)}>
-            Back to this request
-          </button>
-        </section>
-      </main>
+      <>
+        <main className="app">
+          <section className="card done">
+            <div className="done-icon"><Icon d={ICONS.check} size={32} /></div>
+            <h1>{sent === 'none' ? 'Mail app opened' : 'Email body copied'}</h1>
+            {sent === 'none' ? (
+              <p className="muted">
+                This browser can't copy the table, so the details were added as plain text.
+                Review and tap <strong>Send</strong>.
+              </p>
+            ) : (
+              <ol className="steps">
+                <li>Your mail app opened with To, Cc and Subject filled in.</li>
+                <li><strong>Long-press the email body</strong> and tap <strong>Paste</strong>.</li>
+                <li>Check the table and tap <strong>Send</strong>.</li>
+              </ol>
+            )}
+            <button className="btn secondary-wide block" onClick={handleCopyAgain}>
+              <Icon d={ICONS.copy} /> Copy body again
+            </button>
+            <button className="btn primary block" onClick={reset}>
+              <Icon d={ICONS.plus} /> New gate pass request
+            </button>
+            <button className="btn ghost block" onClick={() => setSent(false)}>
+              Back to this request
+            </button>
+          </section>
+        </main>
+        <div className={`toast${toast ? ' show' : ''}`} role="status" aria-live="polite">{toast}</div>
+      </>
     );
   }
 
@@ -270,16 +292,25 @@ export default function App() {
               <p><span className="muted">To:</span> {EMAIL.to.join(', ')}</p>
               <p><span className="muted">Cc:</span> {EMAIL.cc.join(', ')}</p>
               <p><span className="muted">Subject:</span> {EMAIL.subject}</p>
-              <pre>{buildPlainBody(data)}</pre>
+              <div className="mail-body">
+                {GREETING.map((g) => <p key={g}>{g}</p>)}
+                <table className="mail-table">
+                  <tbody>
+                    {tableRows(data).map(([l, r, kind], i) => (
+                      <tr key={i} className={`row-${kind}`}>
+                        <td>{l}</td>
+                        <td>{r}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </section>
       </main>
 
       <div className="action-bar">
-        <button className="btn secondary" onClick={handleCopy} aria-label="Copy email as table">
-          <Icon d={ICONS.copy} />
-        </button>
         <button className="btn primary grow" onClick={handleSend}>
           <Icon d={ICONS.send} /> Send to Admin
         </button>
