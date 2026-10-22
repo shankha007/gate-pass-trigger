@@ -33,13 +33,16 @@ export function tableRows(d) {
   ];
 }
 
+// Plain-text version of the table, laid out in the same order and grouping.
+// The blank table row becomes a paragraph break; visitor rows read "Name | Mobile".
 export function buildPlainBody(d) {
-  const lines = tableRows(d)
-    .filter(([, , kind]) => kind !== 'blank')
-    .map(([l, r, kind]) => {
-      if (kind === 'header') return 'Visitor(s) Name – Mobile Number:';
-      return kind === 'value' ? `${l} – ${r}` : `${l}: ${r}`;
-    });
+  const lines = tableRows(d).map(([l, r, kind]) => {
+    if (kind === 'blank') return '';
+    if (kind === 'header' || kind === 'value') return `${l} | ${r}`;
+    return `${l}: ${r}`;
+  });
+  // Separate the organization from the visitor list, like the table's visual grouping.
+  lines.splice(1, 0, '');
   return [GREETING[0], '', GREETING[1], '', ...lines, ''].join('\r\n');
 }
 
@@ -61,15 +64,25 @@ export function buildHtmlBody(d) {
   );
 }
 
-// When the body is going in via paste, the mailto only carries the headers.
-export function buildMailto(d, { withBody = false } = {}) {
+// Mail links can only carry plain text, so the body is the plain-text layout.
+export function buildMailto(d) {
   const params = [
     // Addresses come from static config and are left unencoded: some mobile mail apps don't decode %40.
     `cc=${EMAIL.cc.join(',')}`,
     `subject=${encodeURIComponent(EMAIL.subject)}`,
-    ...(withBody ? [`body=${encodeURIComponent(buildPlainBody(d))}`] : []),
+    `body=${encodeURIComponent(buildPlainBody(d))}`,
   ].join('&');
   return `mailto:${EMAIL.to.join(',')}?${params}`;
+}
+
+export const OUTLOOK_ANDROID_PACKAGE = 'com.microsoft.office.outlook';
+
+export const isAndroid = () => /Android/i.test(navigator.userAgent);
+
+// Android-only: the same mail link, but addressed to the Outlook app instead of the
+// phone's default mail app. If Outlook isn't installed, Android offers it on the Play Store.
+export function buildOutlookIntent(d) {
+  return `intent:${buildMailto(d)}#Intent;package=${OUTLOOK_ANDROID_PACKAGE};end`;
 }
 
 // Returns 'rich' if the formatted table was copied, 'plain' if only text could be copied.

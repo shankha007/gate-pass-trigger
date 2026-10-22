@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULTS, EMAIL, LIMITS } from './config.js';
-import { GREETING, buildMailto, copyBody, tableRows, toEmailData } from './lib/email.js';
+import {
+  GREETING, buildMailto, buildOutlookIntent, copyBody, isAndroid, tableRows, toEmailData,
+} from './lib/email.js';
 import { formatDate, formatTime, isValidMobile, isValidName, todayISO } from './lib/format.js';
 
 const Icon = ({ d, size = 20 }) => (
@@ -18,6 +20,23 @@ const ICONS = {
   chevron: 'm6 9 6 6 6-6',
   check: 'M20 6 9 17l-5-5',
 };
+
+// Which app Send opens on Android: 'outlook' or 'default'. Remembered per phone.
+const MAIL_APP_KEY = 'gatepass.mailApp';
+function loadMailApp() {
+  try {
+    return localStorage.getItem(MAIL_APP_KEY) === 'default' ? 'default' : 'outlook';
+  } catch {
+    return 'outlook';
+  }
+}
+function saveMailApp(value) {
+  try {
+    localStorage.setItem(MAIL_APP_KEY, value);
+  } catch {
+    // storage blocked: the choice just won't be remembered
+  }
+}
 
 function initialForm() {
   return {
@@ -67,6 +86,7 @@ export default function App() {
   const [showPreview, setShowPreview] = useState(false);
   const [toast, setToast] = useState('');
   const [sent, setSent] = useState(false);
+  const [mailApp, setMailApp] = useState(loadMailApp);
   const nextId = useRef(2);
   const toastTimer = useRef();
   const datePicked = useRef(false);
@@ -135,8 +155,13 @@ export default function App() {
     return false;
   };
 
-  // Copies the formatted body first (mailto can't carry a table), then opens the mail app.
-  // If the clipboard is unavailable, falls back to a plain-text body inside the mailto.
+  const chooseMailApp = (value) => {
+    setMailApp(value);
+    saveMailApp(value);
+  };
+
+  // Opens the mail app with everything filled in (plain-text body, since mail links can't
+  // carry a table). The table is also copied, best effort, as an optional replacement body.
   const handleSend = async () => {
     if (!ensureValid()) return;
     let mode;
@@ -145,7 +170,7 @@ export default function App() {
     } catch {
       mode = 'none';
     }
-    window.location.href = buildMailto(data, { withBody: mode === 'none' });
+    window.location.href = useOutlook ? buildOutlookIntent(data) : buildMailto(data);
     setSent(mode);
   };
 
@@ -153,7 +178,7 @@ export default function App() {
     try {
       const mode = await copyBody(data);
       setSent(mode);
-      showToast('Copied — now paste it into the email body');
+      showToast('Table copied — select all in the body, then Paste');
     } catch {
       showToast('Copy failed on this browser');
     }
@@ -171,6 +196,8 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const android = isAndroid();
+  const useOutlook = android && mailApp === 'outlook';
   const isToday = form.date === todayISO();
   const detailsHaveError = ['date', 'time', 'purpose', 'meetingWith'].some((k) => err(k));
 
@@ -180,27 +207,21 @@ export default function App() {
         <main className="app">
           <section className="card done">
             <div className="done-icon"><Icon d={ICONS.check} size={32} /></div>
-            <h1>{sent === 'none' ? 'Mail app opened' : 'Email body copied'}</h1>
-            {sent === 'none' ? (
-              <p className="muted">
-                This browser can't copy the table, so the details were added as plain text.
-                Review and tap <strong>Send</strong>.
-              </p>
-            ) : (
-              <ol className="steps">
-                <li>Your mail app opened with To, Cc and Subject filled in.</li>
-                <li><strong>Long-press the email body</strong> and tap <strong>Paste</strong>.</li>
-                <li>Check the {sent === 'plain' ? 'details' : 'table'} and tap <strong>Send</strong>.</li>
-              </ol>
-            )}
-            {sent === 'plain' && (
+            <h1>Email ready{useOutlook ? ' in Outlook' : ''}</h1>
+            <p className="muted">
+              To, Cc, Subject and all visitor details are filled in. Review and tap <strong>Send</strong>.
+            </p>
+            {sent === 'rich' && (
               <p className="muted note">
-                This browser could only copy plain text, so the email won't have the table layout.
+                <strong>Want the table layout?</strong> It's already copied. In the email body, select all
+                the text and tap <strong>Paste</strong> to replace it with the table.
               </p>
             )}
-            <button className="btn secondary-wide block" onClick={handleCopyAgain}>
-              <Icon d={ICONS.copy} /> Copy body again
-            </button>
+            {sent !== 'none' && (
+              <button className="btn secondary-wide block" onClick={handleCopyAgain}>
+                <Icon d={ICONS.copy} /> Copy table again
+              </button>
+            )}
             <button className="btn primary block" onClick={reset}>
               <Icon d={ICONS.plus} /> New gate pass request
             </button>
@@ -308,6 +329,20 @@ export default function App() {
             </>
           )}
         </section>
+
+        {android && (
+          <section className="card">
+            <h2 id="mail-app-label">Open email in</h2>
+            <div className="segmented" role="radiogroup" aria-labelledby="mail-app-label">
+              {[['outlook', 'Outlook'], ['default', 'Default mail app']].map(([value, label]) => (
+                <button key={value} role="radio" aria-checked={mailApp === value}
+                  className={mailApp === value ? 'active' : ''} onClick={() => chooseMailApp(value)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="card">
           <button className="collapse-btn" onClick={() => setShowPreview((x) => !x)}

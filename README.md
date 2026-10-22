@@ -6,9 +6,11 @@ A small mobile-first web app that sends the vendor gate pass email to the Admin 
 
 1. Enter the guest organization, then each visitor's name and mobile number. Tap **Add another visitor** for more.
 2. Visit details are pre-filled: today's date, 10:00 AM to 5:30 PM, purpose "Meeting", meeting with Rohit Budhe. Tap **Edit** to change any of them.
-3. Tap **Send to Admin**. Your phone's mail app opens with To, Cc, Subject and Body already filled in. Review it and tap Send.
+3. Tap **Send to Admin**. The email opens with To, Cc, Subject and Body already filled in. Review it and tap Send.
 
-**Copy button (left of Send):** copies the email as a formatted **table**, the same layout as the original email. A `mailto:` link can only carry plain text, so if you want the table, tap Copy and paste it into the body.
+**Which app opens (Android):** under **Open email in**, choose **Outlook** (the default) or **Default mail app**. The phone remembers your choice. On other phones, the default mail app opens.
+
+**Table layout:** a mail link can only carry plain text, so the body that's filled in is plain text. Send also copies the email as a formatted **table**, the same layout as the original email. To use it, select all the text in the body and tap Paste.
 
 Recipients, subject and defaults live in [`src/config.js`](src/config.js).
 
