@@ -81,8 +81,14 @@ export const isAndroid = () => /Android/i.test(navigator.userAgent);
 
 // Android-only: the same mail link, but addressed to the Outlook app instead of the
 // phone's default mail app. If Outlook isn't installed, Android offers it on the Play Store.
+// The table also rides along as Android's HTML-body extra: if Outlook honours it, the email
+// opens with the table; if not, the plain-text body from the mail link is used.
 export function buildOutlookIntent(d) {
-  return `intent:${buildMailto(d)}#Intent;package=${OUTLOOK_ANDROID_PACKAGE};end`;
+  const html = encodeURIComponent(buildHtmlBody(d));
+  return (
+    `intent:${buildMailto(d)}#Intent;package=${OUTLOOK_ANDROID_PACKAGE};` +
+    `S.android.intent.extra.HTML_TEXT=${html};end`
+  );
 }
 
 // Returns 'rich' if the formatted table was copied, 'plain' if only text could be copied.

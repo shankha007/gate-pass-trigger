@@ -208,13 +208,21 @@ export default function App() {
           <section className="card done">
             <div className="done-icon"><Icon d={ICONS.check} size={32} /></div>
             <h1>Email ready{useOutlook ? ' in Outlook' : ''}</h1>
-            <p className="muted">
-              To, Cc, Subject and all visitor details are filled in. Review and tap <strong>Send</strong>.
-            </p>
-            {sent === 'rich' && (
-              <p className="muted note">
-                <strong>Want the table layout?</strong> It's already copied. In the email body, select all
-                the text and tap <strong>Paste</strong> to replace it with the table.
+            {sent === 'rich' ? (
+              <>
+                <p className="muted">
+                  To, Cc, Subject and visitor details are filled in, and the <strong>table is copied</strong>.
+                  If the body already shows the table, just tap <strong>Send</strong>. Otherwise:
+                </p>
+                <ol className="steps">
+                  <li>Long-press the email body and tap <strong>Select all</strong>.</li>
+                  <li>Tap <strong>Paste</strong> to replace it with the table.</li>
+                  <li>Tap <strong>Send</strong>.</li>
+                </ol>
+              </>
+            ) : (
+              <p className="muted">
+                To, Cc, Subject and all visitor details are filled in. Review and tap <strong>Send</strong>.
               </p>
             )}
             {sent !== 'none' && (
