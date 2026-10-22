@@ -256,6 +256,8 @@ button { font: inherit; cursor: pointer; }
 .row-label td:first-child,
 .row-header td { font-weight: 700; }
 
+.done .note { margin: -8px 0 20px; font-size: 0.875rem; }
+
 .steps {
   text-align: left;
   margin: 0 0 20px;

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULTS, EMAIL, LIMITS } from './config.js';
 import { GREETING, buildMailto, copyBody, tableRows, toEmailData } from './lib/email.js';
 import { formatDate, formatTime, isValidMobile, isValidName, todayISO } from './lib/format.js';
@@ -41,6 +41,7 @@ function validate(f) {
     else if (!isValidMobile(v.mobile)) e[`mobile-${v.id}`] = 'Enter a valid 10-digit mobile';
   });
   if (!f.date) e.date = 'Pick a date';
+  else if (f.date < todayISO()) e.date = "Date can't be in the past";
   if (!f.timeFrom || !f.timeTo) e.time = 'Pick both times';
   else if (f.timeTo <= f.timeFrom) e.time = 'End time must be after start time';
   if (!f.purpose.trim()) e.purpose = 'Enter purpose';
@@ -68,8 +69,28 @@ export default function App() {
   const [sent, setSent] = useState(false);
   const nextId = useRef(2);
   const toastTimer = useRef();
+  const datePicked = useRef(false);
 
-  const errors = useMemo(() => validate(form), [form]);
+  // The page can stay open in the background for days (e.g. as a home-screen app).
+  // Unless the user picked a date, move the default date forward to today on return.
+  useEffect(() => {
+    const refreshDate = () => {
+      if (document.visibilityState !== 'visible' || datePicked.current) return;
+      const today = todayISO();
+      setForm((f) => (f.date === today ? f : { ...f, date: today }));
+    };
+    document.addEventListener('visibilitychange', refreshDate);
+    window.addEventListener('pageshow', refreshDate);
+    window.addEventListener('focus', refreshDate);
+    return () => {
+      document.removeEventListener('visibilitychange', refreshDate);
+      window.removeEventListener('pageshow', refreshDate);
+      window.removeEventListener('focus', refreshDate);
+    };
+  }, []);
+
+  // Not memoized: the "past date" rule depends on the current day, not just the form.
+  const errors = validate(form);
   const data = useMemo(() => toEmailData(form), [form]);
   const err = (key) => (submitted || touched[key] ? errors[key] : undefined);
   const touch = (key) => () => setTouched((t) => ({ ...t, [key]: true }));
@@ -102,7 +123,7 @@ export default function App() {
 
   const ensureValid = () => {
     setSubmitted(true);
-    const keys = Object.keys(errors);
+    const keys = Object.keys(validate(form));
     if (keys.length === 0) return true;
     if (['date', 'time', 'purpose', 'meetingWith'].some((k) => keys.includes(k))) setEditDetails(true);
     requestAnimationFrame(() => {
@@ -146,6 +167,7 @@ export default function App() {
     setShowPreview(false);
     setSent(false);
     nextId.current = 2;
+    datePicked.current = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -168,8 +190,13 @@ export default function App() {
               <ol className="steps">
                 <li>Your mail app opened with To, Cc and Subject filled in.</li>
                 <li><strong>Long-press the email body</strong> and tap <strong>Paste</strong>.</li>
-                <li>Check the table and tap <strong>Send</strong>.</li>
+                <li>Check the {sent === 'plain' ? 'details' : 'table'} and tap <strong>Send</strong>.</li>
               </ol>
+            )}
+            {sent === 'plain' && (
+              <p className="muted note">
+                This browser could only copy plain text, so the email won't have the table layout.
+              </p>
             )}
             <button className="btn secondary-wide block" onClick={handleCopyAgain}>
               <Icon d={ICONS.copy} /> Copy body again
@@ -257,7 +284,8 @@ export default function App() {
           ) : (
             <>
               <Field label="Meeting date" htmlFor="date" error={err('date')}>
-                <input id="date" type="date" value={form.date} onChange={set('date')} onBlur={touch('date')} />
+                <input id="date" type="date" min={todayISO()} value={form.date}
+                  onChange={(e) => { datePicked.current = true; set('date')(e); }} onBlur={touch('date')} />
               </Field>
               <Field label="Visit / meeting time" error={err('time')}>
                 <div className="row">
