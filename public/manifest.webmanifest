@@ -1,0 +1,9 @@
+{
+  "name": "Gate Pass Request",
+  "short_name": "Gate Pass",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f6fa",
+  "theme_color": "#0b5cad",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
