@@ -3,7 +3,7 @@ import { DEFAULTS, EMAIL, LIMITS } from './config.js';
 import {
   GREETING, buildMailto, buildOutlookIntent, copyBody, isAndroid, tableRows, toEmailData,
 } from './lib/email.js';
-import { formatDate, formatTime, isValidMobile, isValidName, todayISO } from './lib/format.js';
+import { formatDate, formatTime, isValidMobile, isValidName, normalizeMobile, todayISO } from './lib/format.js';
 
 const Icon = ({ d, size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -117,8 +117,8 @@ export default function App() {
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const setVisitor = (id, key) => (e) => {
-    // Mobile: allow only digits, spaces, + and - while typing.
-    const value = key === 'mobile' ? e.target.value.replace(/[^\d+\s-]/g, '') : e.target.value;
+    // Mobile: digits only, at most 10. A pasted +91 or 0 prefix is dropped first.
+    const value = key === 'mobile' ? normalizeMobile(e.target.value).slice(0, 10) : e.target.value;
     setForm((f) => ({
       ...f,
       visitors: f.visitors.map((v) => (v.id === id ? { ...v, [key]: value } : v)),
@@ -281,7 +281,7 @@ export default function App() {
                   value={v.name} onChange={setVisitor(v.id, 'name')} onBlur={touch(`name-${v.id}`)} />
               </Field>
               <Field label="Mobile number" htmlFor={`mobile-${v.id}`} error={err(`mobile-${v.id}`)}>
-                <input id={`mobile-${v.id}`} type="tel" inputMode="tel" placeholder="10-digit mobile"
+                <input id={`mobile-${v.id}`} type="tel" inputMode="numeric" placeholder="10-digit mobile"
                   autoComplete="off" maxLength={16}
                   value={v.mobile} onChange={setVisitor(v.id, 'mobile')} onBlur={touch(`mobile-${v.id}`)} />
               </Field>
