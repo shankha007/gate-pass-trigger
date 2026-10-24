@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULTS, EMAIL, LIMITS } from './config.js';
+import { DEFAULTS, DEPARTMENTS, EMAIL, LIMITS, departmentById } from './config.js';
 import {
   GREETING, buildMailto, buildOutlookIntent, copyBody, isAndroid, tableRows, toEmailData,
 } from './lib/email.js';
@@ -38,15 +38,34 @@ function saveMailApp(value) {
   }
 }
 
+// The user's department, remembered per phone so it's preselected next time.
+const DEPARTMENT_KEY = 'gatepass.department';
+function loadDepartment() {
+  try {
+    return departmentById(localStorage.getItem(DEPARTMENT_KEY) ?? DEFAULTS.department).id;
+  } catch {
+    return DEFAULTS.department;
+  }
+}
+function saveDepartment(value) {
+  try {
+    localStorage.setItem(DEPARTMENT_KEY, value);
+  } catch {
+    // storage blocked: the choice just won't be remembered
+  }
+}
+
 function initialForm() {
+  const department = loadDepartment();
   return {
+    department,
     org: '',
     visitors: [{ id: 1, name: '', mobile: '' }],
     date: todayISO(),
     timeFrom: DEFAULTS.timeFrom,
     timeTo: DEFAULTS.timeTo,
     purpose: DEFAULTS.purpose,
-    meetingWith: DEFAULTS.meetingWith,
+    meetingWith: departmentById(department).head,
   };
 }
 
@@ -115,6 +134,16 @@ export default function App() {
   const err = (key) => (submitted || touched[key] ? errors[key] : undefined);
   const touch = (key) => () => setTouched((t) => ({ ...t, [key]: true }));
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  // "Meeting with" follows the department head, unless the user typed someone else.
+  const chooseDepartment = (e) => {
+    const id = e.target.value;
+    saveDepartment(id);
+    setForm((f) => {
+      const keepName = f.meetingWith.trim() && f.meetingWith !== departmentById(f.department).head;
+      return { ...f, department: id, meetingWith: keepName ? f.meetingWith : departmentById(id).head };
+    });
+  };
 
   const setVisitor = (id, key) => (e) => {
     // Mobile: digits only, at most 10. A pasted +91 or 0 prefix is dropped first.
@@ -252,6 +281,17 @@ export default function App() {
         </header>
 
         <section className="card">
+          <h2>Your department</h2>
+          <Field label="Department" htmlFor="department">
+            <select id="department" value={form.department} onChange={chooseDepartment}>
+              {DEPARTMENTS.map((d) => (
+                <option key={d.id} value={d.id}>{d.id}</option>
+              ))}
+            </select>
+          </Field>
+        </section>
+
+        <section className="card">
           <h2>Guest organization</h2>
           <Field label="Organization name" htmlFor="org" error={err('org')}>
             <input id="org" type="text" placeholder="e.g. Salesforce" autoComplete="organization"
@@ -361,7 +401,7 @@ export default function App() {
           {showPreview && (
             <div className="preview">
               <p><span className="muted">To:</span> {EMAIL.to.join(', ')}</p>
-              <p><span className="muted">Cc:</span> {EMAIL.cc.join(', ')}</p>
+              <p><span className="muted">Cc:</span> {data.cc.join(', ')}</p>
               <p><span className="muted">Subject:</span> {EMAIL.subject}</p>
               <div className="mail-body">
                 {GREETING.map((g) => <p key={g}>{g}</p>)}

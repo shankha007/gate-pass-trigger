@@ -4,9 +4,10 @@ A small mobile-first web app that sends the vendor gate pass email to the Admin 
 
 ## How it works
 
-1. Enter the guest organization, then each visitor's name and mobile number. Tap **Add another visitor** for more.
-2. Visit details are pre-filled: today's date, 10:00 AM to 5:30 PM, purpose "Meeting", meeting with Rohit Budhe. Tap **Edit** to change any of them.
-3. Tap **Send to Admin**. The email opens with To, Cc, Subject and Body already filled in. Review it and tap Send.
+1. Pick your department (LOS, LMS, Core, Infra or InfoSec). Its head is added to Cc and becomes the default "Meeting with". The phone remembers your department.
+2. Enter the guest organization, then each visitor's name and mobile number. Tap **Add another visitor** for more.
+3. Visit details are pre-filled: today's date, 10:00 AM to 5:30 PM, purpose "Meeting", meeting with your department head. Tap **Edit** to change any of them.
+4. Tap **Send to Admin**. The email opens with To, Cc, Subject and Body already filled in. Review it and tap Send.
 
 **Which app opens (Android):** under **Open email in**, choose **Outlook** (the default) or **Default mail app**. The phone remembers your choice. On other phones, the default mail app opens.
 

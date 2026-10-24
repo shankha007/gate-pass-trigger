@@ -1,9 +1,10 @@
-import { EMAIL, LIMITS } from '../config.js';
+import { EMAIL, LIMITS, departmentById } from '../config.js';
 import { clean, formatDate, formatTime, normalizeMobile } from './format.js';
 
 // Turns raw form state into the cleaned values that go into the email.
 export function toEmailData(form) {
   return {
+    cc: [departmentById(form.department).email, ...EMAIL.cc],
     org: clean(form.org, LIMITS.org),
     visitors: form.visitors.map((v) => ({
       name: clean(v.name, LIMITS.name),
@@ -68,7 +69,7 @@ export function buildHtmlBody(d) {
 export function buildMailto(d) {
   const params = [
     // Addresses come from static config and are left unencoded: some mobile mail apps don't decode %40.
-    `cc=${EMAIL.cc.join(',')}`,
+    `cc=${d.cc.join(',')}`,
     `subject=${encodeURIComponent(EMAIL.subject)}`,
     `body=${encodeURIComponent(buildPlainBody(d))}`,
   ].join('&');
